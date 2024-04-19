@@ -26,7 +26,9 @@
     "reactstrap": "^8.5.1",
     "refractor": "^2.6.1",
     "tabler-react": "^2.0.0-alpha.1",
-    "yup": "^0.29.1"
+    "yup": "^0.29.1",
+    "@opentelemetry/api": "*",
+    "@opentelemetry/auto-instrumentations-node": "*"
   },
   "scripts": {
     "start": "react-scripts start",

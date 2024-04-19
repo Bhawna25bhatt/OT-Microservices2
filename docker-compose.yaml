@@ -65,6 +65,15 @@ services:
 #      ELASTIC_APM_SERVICE_NAME: "attendance"
 #      ELASTIC_APM_SERVER_URL: "http://apm-server:8200"
       ELASTIC_APM_ENABLED: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_SERVICE_NAME: "attendance"
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
     networks:
       - ot-microservices
     depends_on:
@@ -77,6 +86,15 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.empms-salary.rule=Host(`ot-microservices.opstree.com`) && PathPrefix(`/salary/`)"
     environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_SERVICE_NAME: "salary"
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
 #      ELASTIC_APM_SERVICE_NAME: "salary"
 #      ELASTIC_APM_SERVER_URL: "http://apm-server:8200"
       SPRING_ELASTICSEARCH_REST_URIS: "empms-es:9200"
@@ -118,6 +136,17 @@ services:
       - "traefik.http.services.empms-frontend.loadbalancer.server.port=3000"
     networks:
       - ot-microservices
+    environment:
+      NODE_OPTIONS: "--require @opentelemetry/auto-instrumentations-node/register"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_SERVICE_NAME: "frontend"
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
 
   empms-traefik:
     image: traefik:v2.9

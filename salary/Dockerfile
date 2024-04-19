@@ -11,6 +11,9 @@ USER root
 RUN apk update && \
     apk add openjdk17
 
+COPY opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
+ENV JAVA_TOOL_OPTIONS="-javaagent:/app/opentelemetry-javaagent.jar"
+
 COPY --from=builder /java/target/salary-0.3.0-RELEASE.jar /app/salary.jar
 COPY ./config.yaml /root/config/config.yaml
 ENV CONFIG_FILE "/root/config/config.yaml"

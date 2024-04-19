@@ -4,3 +4,5 @@ elastic-apm[flask]
 flask
 cryptography
 gunicorn
+opentelemetry-distro
+opentelemetry-exporter-otlp
