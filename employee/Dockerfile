@@ -2,10 +2,10 @@ FROM golang:1.18 as builder
 MAINTAINER OpsTree Solutions
 FROM golang:1.18 as builder
 MAINTAINER OpsTree Solutions
-RUN go get -u go.opentelemetry.io/otel \
-    && go get -u go.opentelemetry.io/otel/exporters/otlp \
-    && go get -u go.opentelemetry.io/otel/exporters/stdout \
-    && go get -u go.opentelemetry.io/otel/sdk/trace
+#RUN go get -u go.opentelemetry.io/otel \
+ #   && go get -u go.opentelemetry.io/otel/exporters/otlp \
+  #  && go get -u go.opentelemetry.io/otel/exporters/stdout \
+   # && go get -u go.opentelemetry.io/otel/sdk/trace
 COPY ./ /go/src/employee
 WORKDIR /go/src/employee
 RUN go get -v -t -d ./... \
