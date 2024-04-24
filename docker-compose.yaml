@@ -1,17 +1,182 @@
+---
+version: '3.2'
 
-version: "3"
 services:
-
-  # Generate fake traces...
-  k6-tracing:
-    image: ghcr.io/grafana/xk6-client-tracing:v0.0.2
+  empms-es:
+    build:
+      context: elasticsearch/
+    volumes:
+      - type: bind
+        source: ./elasticsearch/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - type: volume
+        source: elasticsearch
+        target: /usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
     environment:
-      - ENDPOINT=otel-collector:4317
-    restart: always
-    depends_on:
-      - otel-collector
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m"
+      ELASTIC_PASSWORD: elastic
+    networks:
+      - ot-microservices
 
-  # And put them in an OTEL collector pipeline...
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.4.3
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_HOSTS: '["http://empms-es:9200"]'
+      ELASTICSEARCH_SERVICEACCOUNTTOKEN: AAEAAWVsYXN0aWMva2liYW5hL2tpYmFuYToxa0pGUEs3WVRINmQwaG5JZ29NN21n
+    depends_on:
+      - empms-es
+    networks:
+      - ot-microservices
+
+  empms-db:
+    build:
+      context: mysql/
+    ports:
+      - "3306:3306"
+    volumes:
+      - type: volume
+        source: mysql
+        target: /var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "password"
+      MYSQL_DATABASE: "attendance_db"
+    networks:
+      - ot-microservices
+
+  empms-attendance:
+    build:
+      context: attendance/
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.empms-attendance.rule=Host(`ot-microservices.opstree.com`) && PathPrefix(`/attendance/`)"
+    volumes:
+      - type: bind
+        source: ./attendance/config.yaml
+        target: /app/config.yaml
+        read_only: true
+    environment:
+      CONFIG_FILE: "/app/config.yaml"
+#      ELASTIC_APM_SERVICE_NAME: "attendance"
+#      ELASTIC_APM_SERVER_URL: "http://apm-server:8200"
+      ELASTIC_APM_ENABLED: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_SERVICE_NAME: "attendance"
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
+    networks:
+      - ot-microservices
+    depends_on:
+      - empms-db
+
+  empms-salary:
+    build:
+      context: salary/
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.empms-salary.rule=Host(`ot-microservices.opstree.com`) && PathPrefix(`/salary/`)"
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_SERVICE_NAME: "salary"
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
+#      ELASTIC_APM_SERVICE_NAME: "salary"
+#      ELASTIC_APM_SERVER_URL: "http://apm-server:8200"
+      SPRING_ELASTICSEARCH_REST_URIS: "empms-es:9200"
+      SPRING_ELASTICSEARCH_REST_USERNAME: elastic
+      SPRING_ELASTICSEARCH_REST_PASSWORD: elastic
+      ELASTIC_APM_ENABLED: "false"
+    networks:
+      - ot-microservices
+    depends_on:
+      - empms-es
+
+  empms-employee:
+    build:
+      context: employee/
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.empms-employee.rule=Host(`ot-microservices.opstree.com`) && PathPrefix(`/employee/`)"
+    volumes:
+      - type: bind
+        source: ./employee/config.yaml
+        target: /app/config.yaml
+        read_only: true
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_SERVICE_NAME: "employee"
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
+      CONFIG_FILE: "/app/config.yaml"
+#      ELASTIC_APM_SERVICE_NAME: "employee"
+#      ELASTIC_APM_SERVER_URL: "http://apm-server:8200"
+      ELASTIC_APM_ENABLED: "false"
+    networks:
+      - ot-microservices
+    depends_on:
+      - empms-es
+
+  empms-frontend:
+    build:
+      context: frontend/
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.empms-frontend.rule=Host(`ot-microservices.opstree.com`) && PathPrefix(`/`)"
+      - "traefik.http.services.empms-frontend.loadbalancer.server.port=3000"
+    networks:
+      - ot-microservices
+    environment:
+      NODE_OPTIONS: "--require @opentelemetry/auto-instrumentations-node/register"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_SERVICE_NAME: "frontend"
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://10.10.0.4:4317"
+      OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
+
+  empms-traefik:
+    image: traefik:v2.9
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker"
+      - "--entrypoints.web.address=:80"
+      - "--providers.docker.exposedbydefault=false"
+    ports:
+      - 80:80
+      - 8080:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - empms-frontend
+      - empms-attendance
+      - empms-salary
+      - empms-employee
+    networks:
+      - ot-microservices
+
   otel-collector:
     image: otel/opentelemetry-collector:0.86.0
     command: [ "--config=/etc/otel-collector.yaml" ]
@@ -24,7 +189,7 @@ services:
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
       - ./shared/tempo.yaml:/etc/tempo.yaml
-      #- ./tempo-data:/var/tempo
+      - ./tempo-data:/var/tempo
     ports:
       - "14268"  # jaeger ingest
       - "3200"   # tempo
@@ -39,7 +204,7 @@ services:
       - --web.enable-remote-write-receiver
       - --enable-feature=exemplar-storage
     volumes:
-      - ../shared/prometheus.yaml:/etc/prometheus.yaml
+      - ./shared/prometheus.yaml:/etc/prometheus.yaml
     ports:
       - "9090:9090"
 
@@ -54,4 +219,12 @@ services:
       - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
     ports:
       - "3000:3000"
+
+networks:
+  ot-microservices:
+    driver: bridge
+
+volumes:
+  elasticsearch:
+  mysql:
 
