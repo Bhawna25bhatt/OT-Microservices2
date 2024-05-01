@@ -11,6 +11,8 @@ USER root
 RUN apk update && \
     apk add openjdk17 && \
     apk add curl
+# Create the directory if it doesn't exist
+RUN mkdir -p /app
 
 RUN curl -L -o /app/opentelemetry-javaagent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
 
