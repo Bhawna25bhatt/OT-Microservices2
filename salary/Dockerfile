@@ -9,7 +9,8 @@ FROM alpine:latest
 MAINTAINER Opstree Solutions
 USER root
 RUN apk update && \
-    apk add openjdk17
+    apk add openjdk17 && \
+    apk add curl
 
 RUN curl -L -o /app/opentelemetry-javaagent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
 
